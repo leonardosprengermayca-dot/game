@@ -1,1 +1,1847 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FENDAS 86 — Mistério BR</title>
 
+  <!-- Fonte retrô -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#04030a;
+      --panel:#0b0a16;
+      --neon:#3cf2ff;
+      --neon2:#ff3df2;
+      --text:#d9f7ff;
+      --muted:#7aa9b6;
+      --danger:#ff4d6d;
+      --ok:#58ff8c;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: "Press Start 2P", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: radial-gradient(1200px 800px at 50% 35%, rgba(60,242,255,0.12), transparent 55%),
+                  radial-gradient(900px 700px at 15% 70%, rgba(255,61,242,0.09), transparent 55%),
+                  linear-gradient(180deg, #02010a 0%, #04030a 60%, #02010a 100%);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    /* Contêiner central */
+    .wrap{
+      width:min(980px, 96vw);
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+      padding: 16px 0;
+      position:relative;
+    }
+
+    .hud-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(20,18,50,0.65), rgba(10,9,26,0.35));
+      border:1px solid rgba(60,242,255,0.25);
+      border-radius:12px;
+      box-shadow: 0 0 22px rgba(60,242,255,0.12);
+      backdrop-filter: blur(2px);
+    }
+    .hud-top .left, .hud-top .right{
+      display:flex; flex-direction:column; gap:10px;
+      min-width: 250px;
+    }
+
+    .badge{
+      font-size:10px;
+      color: rgba(217,247,255,0.95);
+      text-shadow: 0 0 10px rgba(60,242,255,0.22);
+    }
+
+    .bars{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:8px;
+    }
+    .bar-row{
+      display:flex; align-items:center; gap:10px;
+    }
+    .bar-row .label{
+      width:86px;
+      font-size:10px;
+      color: var(--muted);
+    }
+    .bar{
+      flex:1;
+      height:12px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.06);
+      border:1px solid rgba(60,242,255,0.18);
+      overflow:hidden;
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+    }
+    .bar > .fill{
+      height:100%;
+      width:50%;
+      background: linear-gradient(90deg, rgba(60,242,255,0.9), rgba(255,61,242,0.75));
+      box-shadow: 0 0 18px rgba(60,242,255,0.3);
+    }
+    .bar.orange > .fill{
+      background: linear-gradient(90deg, rgba(255,173,60,0.95), rgba(255,61,242,0.75));
+      box-shadow: 0 0 18px rgba(255,173,60,0.25);
+    }
+    .bar.red > .fill{
+      background: linear-gradient(90deg, rgba(255,77,109,1), rgba(255,61,242,0.7));
+      box-shadow: 0 0 18px rgba(255,77,109,0.25);
+    }
+
+    /* Tela principal */
+    .stage{
+      position:relative;
+      display:grid;
+      grid-template-columns: 1fr;
+      justify-items:center;
+      gap:10px;
+    }
+
+    canvas{
+      width: min(840px, 96vw);
+      height: auto;
+      image-rendering: pixelated;
+      border-radius:14px;
+      border: 1px solid rgba(60,242,255,0.22);
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.68)),
+        radial-gradient(700px 420px at 50% 0%, rgba(60,242,255,0.10), transparent 60%);
+      box-shadow:
+        0 0 44px rgba(60,242,255,0.10),
+        0 0 22px rgba(255,61,242,0.07);
+    }
+
+    /* Overlay CRT (scanlines + glow) */
+    .crt{
+      pointer-events:none;
+      position:absolute;
+      inset:0;
+      border-radius:14px;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(0,0,0,0) 0px,
+          rgba(0,0,0,0.18) 2px,
+          rgba(0,0,0,0) 4px
+        ),
+        radial-gradient(700px 400px at 50% 0%, rgba(60,242,255,0.08), transparent 60%);
+      mix-blend-mode: overlay;
+      opacity:0.85;
+    }
+    .crt::after{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      border-radius:14px;
+      background: linear-gradient(90deg, rgba(255,61,242,0.04), rgba(60,242,255,0.05));
+      filter: blur(10px);
+      opacity:0.45;
+      transform: translateZ(0);
+      animation: flicker 2.4s infinite linear;
+    }
+    @keyframes flicker{
+      0%, 100%{ opacity:0.35; }
+      50%{ opacity:0.55; }
+    }
+
+    /* Telas (menu/pause/game over) */
+    .screen{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 22px;
+      z-index: 5;
+      background: radial-gradient(700px 360px at 50% 35%, rgba(0,0,0,0.55), rgba(0,0,0,0.78));
+      border-radius:14px;
+    }
+    .panel{
+      width: min(560px, 92%);
+      background: linear-gradient(180deg, rgba(10,9,26,0.88), rgba(5,4,13,0.76));
+      border:1px solid rgba(60,242,255,0.28);
+      border-radius:14px;
+      padding: 18px 18px 16px;
+      box-shadow:
+        0 0 40px rgba(60,242,255,0.14),
+        inset 0 0 40px rgba(255,61,242,0.06);
+    }
+    .panel h1{
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 14px rgba(60,242,255,0.35);
+    }
+    .text{
+      font-size: 10px;
+      line-height: 1.55;
+      color: rgba(217,247,255,0.92);
+      white-space: pre-wrap;
+    }
+    .menu{
+      margin-top: 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .btn{
+      width:100%;
+      cursor:pointer;
+      border-radius:12px;
+      padding: 12px 12px;
+      border:1px solid rgba(60,242,255,0.28);
+      background: linear-gradient(180deg, rgba(20,18,50,0.75), rgba(8,7,20,0.65));
+      color:var(--text);
+      font-family: inherit;
+      font-size: 11px;
+      box-shadow: 0 0 18px rgba(60,242,255,0.12);
+      transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
+      text-align:left;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .btn:hover{
+      border-color: rgba(255,61,242,0.35);
+      box-shadow: 0 0 22px rgba(255,61,242,0.15);
+      transform: translateY(-1px);
+    }
+    .btn:active{ transform: translateY(0px); }
+    .kbd{
+      font-size: 10px;
+      color: rgba(255,255,255,0.85);
+      background: rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.14);
+      border-bottom-color: rgba(255,255,255,0.06);
+      padding: 6px 8px;
+      border-radius: 10px;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25);
+    }
+
+    .help-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top: 12px;
+    }
+    .card{
+      border:1px solid rgba(60,242,255,0.18);
+      border-radius:12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.04);
+    }
+    .card .t{
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 8px;
+    }
+    .card .d{
+      font-size: 10px;
+      line-height: 1.5;
+      color: rgba(217,247,255,0.95);
+    }
+
+    /* Mobile: menor HUD */
+    @media (max-width: 640px){
+      .hud-top{ display:none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="hud-top">
+      <div class="left">
+        <div class="badge">📻 FENDAS 86 • CIDADE INDUSTRIAL • 1986</div>
+        <div class="bars">
+          <div class="bar-row">
+            <div class="label">Vida</div>
+            <div class="bar"><div class="fill" id="hpFill"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="label">Lanterna</div>
+            <div class="bar orange"><div class="fill" id="batFill"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="right" style="align-items:flex-end;">
+        <div class="badge" id="statusBadge">🧭 Buscando pistas…</div>
+        <div class="badge" style="color:rgba(217,247,255,0.75); font-size:9px; text-align:right;">
+          WASD/Setas • Focinho de sombra sente a luz 🌑→💡
+        </div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <canvas id="game" width="800" height="520" aria-label="Jogo Fendas 86"></canvas>
+      <div class="crt"></div>
+
+      <!-- Screen: MENU -->
+      <div class="screen" id="screenMenu" style="display:flex;">
+        <div class="panel">
+          <h1>FENDAS 86</h1>
+          <div class="text">
+            Um técnico de automação desaparece colegas na fábrica/refinaria.
+            Quando a névoa baixa, “a outra dimensão” acorda. 🌫️
+          </div>
+
+          <div class="menu">
+            <button class="btn" id="btnStart">
+              <span>▶ Iniciar Jogo</span>
+              <span class="kbd">ENTER</span>
+            </button>
+            <button class="btn" id="btnHow">
+              <span>❓ Instruções</span>
+              <span class="kbd">I</span>
+            </button>
+            <button class="btn" id="btnCredits">
+              <span>🏷️ Créditos</span>
+              <span class="kbd">C</span>
+            </button>
+          </div>
+
+          <div class="help-grid">
+            <div class="card">
+              <div class="t">🎮 Combate</div>
+              <div class="d">Com a lanterna (L), você revela inimigos.
+                Depois ganha ferramentas (Espaço) para bater.</div>
+            </div>
+            <div class="card">
+              <div class="t">🔎 Mistério</div>
+              <div class="d">Coletar pistas: disquete, relatório e fita K7.
+                Use painéis para abrir portas.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen: INSTRUÇÕES / LORE -->
+      <div class="screen" id="screenLore" style="display:none;">
+        <div class="panel">
+          <h1>📜 INSTRUÇÕES & LORE</h1>
+          <div class="text">
+            1986. A cidade do interior fede a óleo e ferrugem.
+            Você trabalha com automação industrial e estuda eletrônica.
+
+            Quando seus colegas somem, você encontra marcas de
+            “energia” e gases desconhecidos — e aprende o que veio da fenda.
+          </div>
+
+          <div class="help-grid" style="margin-top:14px;">
+            <div class="card">
+              <div class="t">💡 Lanterna</div>
+              <div class="d">
+                • Ative/Desative com <b>L</b>
+                • Bateria gasta enquanto ligada
+                • Quanto mais luz, mais fraqueza nos “sombrados”
+              </div>
+            </div>
+            <div class="card">
+              <div class="t">⚙️ Ação</div>
+              <div class="d">
+                • Mover: <b>WASD</b> ou <b>Setas</b>
+                • Atacar: <b>Espaço</b>
+                • Interagir/hackear painéis: <b>E</b>
+              </div>
+            </div>
+            <div class="card">
+              <div class="t">🎒 Pistas</div>
+              <div class="d">
+                Pegue itens no mapa (disquete, relatório, K7).
+                Ao juntar, abra a “Porta do Controle”.
+              </div>
+            </div>
+            <div class="card">
+              <div class="t">📎 Dica</div>
+              <div class="d">
+                Inimigos patrulham e reagem à escuridão.
+                Se a bateria acabar… a fábrica vira armadilha.
+              </div>
+            </div>
+          </div>
+
+          <div class="menu" style="margin-top:14px;">
+            <button class="btn" id="btnBackFromLore">
+              <span>⬅ Voltar</span>
+              <span class="kbd">ESC</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen: GAME OVER -->
+      <div class="screen" id="screenGameOver" style="display:none;">
+        <div class="panel">
+          <h1>💀 GAME OVER</h1>
+          <div class="text" id="gameOverText">
+            As fendas te encontraram antes da luz.
+          </div>
+          <div class="menu" style="margin-top:14px;">
+            <button class="btn" id="btnRetry">
+              <span>↻ Tentar Novamente</span>
+              <span class="kbd">R</span>
+            </button>
+            <button class="btn" id="btnBackToMenu2">
+              <span>🏁 Voltar ao Menu</span>
+              <span class="kbd">M</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen: VITÓRIA -->
+      <div class="screen" id="screenVictory" style="display:none;">
+        <div class="panel">
+          <h1>✅ VITÓRIA</h1>
+          <div class="text">
+            Você desligou a energia e trancou a fenda.
+            A névoa ainda existe… mas agora ela espera.
+          </div>
+          <div class="menu" style="margin-top:14px;">
+            <button class="btn" id="btnWinRetry">
+              <span>↻ Rodar de Novo</span>
+              <span class="kbd">R</span>
+            </button>
+            <button class="btn" id="btnWinBack">
+              <span>🏁 Menu</span>
+              <span class="kbd">M</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /**************************************************************
+     *  FENDAS 86 — Jogo 2D Top-down (single-file)
+     *  - Retro CRT via CSS
+     *  - WebAudio procedural (beeps/chiptune minimalista)
+     *  - Geração de mapa por tiles
+     *  - Física AABB simples
+     *  - Colisão + IA de inimigos + iluminação da lanterna
+     *  - HUD/estados: Menu, Gameplay, Lore, GameOver/Vitória
+     **************************************************************/
+
+    // =========================
+    // Utils
+    // =========================
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const lerp = (a,b,t) => a + (b-a)*t;
+
+    function nowMs(){ return performance.now(); }
+
+    // =========================
+    // DOM refs / UI
+    // =========================
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const screenMenu = document.getElementById('screenMenu');
+    const screenLore = document.getElementById('screenLore');
+    const screenGameOver = document.getElementById('screenGameOver');
+    const screenVictory = document.getElementById('screenVictory');
+
+    const statusBadge = document.getElementById('statusBadge');
+
+    const hpFill = document.getElementById('hpFill');
+    const batFill = document.getElementById('batFill');
+
+    // =========================
+    // Input
+    // =========================
+    const input = {
+      keys: new Set(),
+      justPressed: new Set(),
+      axisX: 0,
+      axisY: 0
+    };
+
+    function onKeyDown(e){
+      const k = e.key;
+      const keyLower = k.toLowerCase();
+      const mapped = keyLower === 'arrowup' ? 'arrowup' :
+                      keyLower === 'arrowdown' ? 'arrowdown' :
+                      keyLower === 'arrowleft' ? 'arrowleft' :
+                      keyLower === 'arrowright' ? 'arrowright' : keyLower;
+
+      if (!input.keys.has(mapped)) input.justPressed.add(mapped);
+      input.keys.add(mapped);
+
+      // Teclas de tela (globais)
+      if (mapped === 'escape') {
+        if (state.name === 'Lore') setState('Menu');
+        else if (state.name !== 'Menu') setState('Menu');
+      }
+      if (mapped === 'i' && state.name === 'Menu') setState('Lore');
+      if (mapped === 'c' && state.name === 'Menu') { showCredits(); }
+    }
+
+    function onKeyUp(e){
+      const keyLower = e.key.toLowerCase();
+      const mapped = keyLower === 'arrowup' ? 'arrowup' :
+                      keyLower === 'arrowdown' ? 'arrowdown' :
+                      keyLower === 'arrowleft' ? 'arrowleft' :
+                      keyLower === 'arrowright' ? 'arrowright' : keyLower;
+      input.keys.delete(mapped);
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    function consumeJustPressed(){
+      input.justPressed.clear();
+    }
+
+    function updateAxis(){
+      const up = input.keys.has('w') || input.keys.has('arrowup');
+      const down = input.keys.has('s') || input.keys.has('arrowdown');
+      const left = input.keys.has('a') || input.keys.has('arrowleft');
+      const right = input.keys.has('d') || input.keys.has('arrowright');
+
+      input.axisX = (right ? 1 : 0) + (left ? -1 : 0);
+      input.axisY = (down ? 1 : 0) + (up ? -1 : 0);
+
+      if (input.axisX !== 0 || input.axisY !== 0){
+        // normaliza
+        const len = Math.hypot(input.axisX, input.axisY);
+        if (len > 0){
+          input.axisX /= len;
+          input.axisY /= len;
+        }
+      }
+    }
+
+    // =========================
+    // Audio (Web Audio API) — procedural
+    // =========================
+    const audio = {
+      ctx: null,
+      master: null,
+      musicTimer: 0,
+      musicOn: false
+    };
+
+    function initAudio(){
+      if (audio.ctx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audio.ctx = new AC();
+      audio.master = audio.ctx.createGain();
+      audio.master.gain.value = 0.65;
+      audio.master.connect(audio.ctx.destination);
+    }
+
+    function beep({freq=440, dur=0.08, type='square', gain=0.12, slideTo=null, slideDur=null}){
+      if (!audio.ctx) return;
+      const t0 = audio.ctx.currentTime;
+      const o = audio.ctx.createOscillator();
+      const g = audio.ctx.createGain();
+
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+
+      if (slideTo != null){
+        const sd = slideDur ?? dur;
+        o.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + sd);
+      }
+
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+      o.connect(g);
+      g.connect(audio.master);
+
+      o.start(t0);
+      o.stop(t0 + dur + 0.01);
+    }
+
+    function noiseHit({dur=0.09, gain=0.10}){
+      if (!audio.ctx) return;
+      const t0 = audio.ctx.currentTime;
+
+      const bufferSize = Math.floor(audio.ctx.sampleRate * dur);
+      const buffer = audio.ctx.createBuffer(1, bufferSize, audio.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i=0;i<bufferSize;i++){
+        data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufferSize, 1.5);
+      }
+
+      const source = audio.ctx.createBufferSource();
+      source.buffer = buffer;
+
+      const g = audio.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+      source.connect(g);
+      g.connect(audio.master);
+
+      source.start(t0);
+      source.stop(t0 + dur + 0.02);
+    }
+
+    function startMusic(){
+      initAudio();
+      if (audio.musicOn) return;
+      audio.musicOn = true;
+
+      // Sequência simples em “steps”
+      const steps = [
+        // noteFreq (ou null), duration(steps units), slideTo?, type
+        [110, 2, null, 'square'],
+        [null, 1, null, 'square'],
+        [98, 2, 82, 'triangle'],
+        [null, 1, null, 'square'],
+        [87, 2, null, 'square'],
+        [null, 1, null, 'square'],
+        [73, 3, 82, 'triangle'],
+        [null, 1, null, 'square']
+      ];
+      audio.musicTimer = 0;
+      audio._musicIdx = 0;
+    }
+
+    function stopMusic(){
+      audio.musicOn = false;
+    }
+
+    function tickMusic(dt){
+      if (!audio.musicOn) return;
+      audio.musicTimer += dt;
+      const stepMs = 160; // ~ chiptune
+      while (audio.musicTimer >= stepMs){
+        audio.musicTimer -= stepMs;
+
+        const [freq, durSteps, slideTo, type] = stepsForMusic()[audio._musicIdx % stepsForMusic().length];
+        if (freq != null){
+          // Em camadas leves (tremolo/ghost)
+          beep({freq, dur: 0.12, type, gain: 0.06, slideTo});
+          if (Math.random() < 0.35){
+            beep({freq: freq*2, dur: 0.06, type:'square', gain: 0.025});
+          }
+        } else {
+          // pausa
+        }
+
+        audio._musicIdx++;
+      }
+    }
+
+    function stepsForMusic(){
+      // Varia conforme “pressão” (bateria/saúde) via variáveis globais do gameplay
+      // Vamos usar estado atual do HUD para modular.
+      const danger = (gameplay && gameplay.batteryRatio < 0.25) || (gameplay && gameplay.hpRatio < 0.28);
+      if (danger){
+        return [
+          [131,2,null,'square'],
+          [null,1,null,'square'],
+          [98,2,82,'triangle'],
+          [null,1,null,'square'],
+          [87,2,null,'square'],
+          [null,1,null,'square'],
+          [73,3,82,'triangle'],
+          [null,1,null,'square'],
+        ];
+      }
+      return [
+        [110,2,null,'square'],
+        [null,1,null,'square'],
+        [98,2,82,'triangle'],
+        [null,1,null,'square'],
+        [87,2,null,'square'],
+        [null,1,null,'square'],
+        [73,3,82,'triangle'],
+        [null,1,null,'square']
+      ];
+    }
+
+    // =========================
+    // Game States
+    // =========================
+    const state = {
+      name: 'Menu'
+    };
+
+    function showOnly(which){
+      screenMenu.style.display = (which === 'Menu') ? 'flex' : 'none';
+      screenLore.style.display = (which === 'Lore') ? 'flex' : 'none';
+      screenGameOver.style.display = (which === 'GameOver') ? 'flex' : 'none';
+      screenVictory.style.display = (which === 'Victory') ? 'flex' : 'none';
+    }
+
+    function setState(name){
+      state.name = name;
+      showOnly(name);
+    }
+
+    // Botões UI
+    document.getElementById('btnStart').addEventListener('click', ()=> beginNewGame());
+    document.getElementById('btnHow').addEventListener('click', ()=> setState('Lore'));
+    document.getElementById('btnCredits').addEventListener('click', ()=> showCredits());
+
+    document.getElementById('btnBackFromLore').addEventListener('click', ()=> setState('Menu'));
+    document.getElementById('btnRetry').addEventListener('click', ()=> beginNewGame());
+    document.getElementById('btnWinRetry').addEventListener('click', ()=> beginNewGame());
+
+    document.getElementById('btnBackToMenu2').addEventListener('click', ()=> setState('Menu'));
+    document.getElementById('btnWinBack').addEventListener('click', ()=> setState('Menu'));
+
+    window.addEventListener('keydown', (e)=>{
+      const k = e.key.toLowerCase();
+      if (state.name === 'Menu' && k === 'enter') beginNewGame();
+      if (state.name === 'Menu' && k === 'i') setState('Lore');
+      if (state.name === 'GameOver' && k === 'r') beginNewGame();
+      if (state.name === 'Victory' && k === 'r') beginNewGame();
+      if ((state.name === 'GameOver' || state.name === 'Victory') && k === 'm') setState('Menu');
+    });
+
+    function showCredits(){
+      // Reutiliza Lore como “créditos” simples
+      setState('Lore');
+      const panel = screenLore.querySelector('.panel');
+      panel.querySelector('h1').textContent = '🏷️ CRÉDITOS';
+      panel.querySelector('.text').textContent =
+`Desenvolvido em JavaScript (single-file) para GitHub Pages.
+Gênero: mistério + suspense + ação (top-down 2D)
+Sons: Web Audio (procedural, chiptune/beeps)
+Gráficos: Canvas + estilo retro CRT`;
+
+      const oldBack = document.getElementById('btnBackFromLore');
+      // garante botão voltar
+      oldBack.style.display = 'inline-flex';
+      oldBack.onclick = ()=> {
+        // restaura título/lore original
+        const title = screenLore.querySelector('h1');
+        const txt = screenLore.querySelector('.text');
+        title.textContent = '📜 INSTRUÇÕES & LORE';
+        txt.textContent =
+`1986. A cidade do interior fede a óleo e ferrugem.
+Você trabalha com automação industrial e estuda eletrônica.
+
+Quando seus colegas somem, você encontra marcas de
+“energia” e gases desconhecidos — e aprende o que veio da fenda.`;
+        setState('Menu');
+      };
+    }
+
+    // =========================
+    // Mapa (tiles) e entidades
+    // =========================
+    // Tiles: 0=chão, 1=parede, 2=porta travada, 3=painel hackeável (controle), 4=obstáculo decor
+    const TILE = { FLOOR:0, WALL:1, LOCKED_DOOR:2, PANEL:3, DECO:4 };
+
+    const TILE_SIZE = 20; // px no canvas (800x520 => 40x26)
+    const MAP_W = Math.floor(canvas.width / TILE_SIZE);   // 40
+    const MAP_H = Math.floor(canvas.height / TILE_SIZE);  // 26
+
+    function makeMap(){
+      // Layout “fábrica/refinaria”: corredor central + salas laterais
+      // Representamos com matriz 26x40.
+      const map = Array.from({length: MAP_H}, ()=> Array.from({length: MAP_W}, ()=>TILE.FLOOR));
+
+      // Bordas de paredes
+      for (let y=0;y<MAP_H;y++){
+        for (let x=0;x<MAP_W;x++){
+          if (x===0 || y===0 || x===MAP_W-1 || y===MAP_H-1) map[y][x]=TILE.WALL;
+        }
+      }
+
+      // “Salas”
+      const putRoom = (x0,y0,w,h)=>{
+        for (let y=y0;y<y0+h;y++){
+          for (let x=x0;x<x0+w;x++){
+            if (x===x0 || y===y0 || x===x0+w-1 || y===y0+h-1) map[y][x]=TILE.WALL;
+            else map[y][x]=TILE.FLOOR;
+          }
+        }
+      };
+
+      putRoom(2,2,10,8);    // sala 1
+      putRoom(13,2,12,10);  // sala 2
+      putRoom(27,2,11,8);   // sala 3
+      putRoom(3,12,14,12);  // sala 4
+      putRoom(18,12,16,10); // sala 5
+      putRoom(35-10,12,10,10); // pequena sala 6 (ajuste pela borda)
+
+      // Corredores (rasgos) — abrindo entradas em paredes
+      const carveDoor = (x,y)=>{
+        if (map[y][x]===TILE.WALL) map[y][x]=TILE.FLOOR;
+      };
+
+      // Entradas entre áreas
+      carveDoor(7,9);
+      carveDoor(9,10);
+
+      carveDoor(18,11);
+      carveDoor(17,11);
+
+      carveDoor(25,9);
+      carveDoor(27,9);
+
+      carveDoor(14,12);
+      carveDoor(15,12);
+
+      carveDoor(33,9);
+
+      carveDoor(6,12);
+
+      // Uma área “controle” com porta trancada
+      // Painel no canto (3) + porta trancada (2)
+      // Porta: parede que precisa ser desbloqueada via puzzles.
+      const doorX = 31, doorY = 20;
+      // Causar parede ao redor:
+      for (let i=0;i<4;i++){
+        map[doorY-2+i][doorX] = TILE.WALL;
+      }
+      // Abrimos um “corredor” e colocamos porta lá.
+      // Espaço do “batente”:
+      map[doorY][doorX] = TILE.LOCKED_DOOR; // bloco bloqueando
+      // Paredes próximas
+      map[doorY][doorX-1] = TILE.WALL;
+      map[doorY][doorX+1] = TILE.WALL;
+      map[doorY-1][doorX] = TILE.WALL;
+      map[doorY+1][doorX] = TILE.WALL;
+
+      // Painel hackeável ao lado (3)
+      map[doorY-2][doorX-2] = TILE.PANEL;
+
+      // “Decorações/caixas” (obstáculos) para criar cobertura
+      const decoRect = (x0,y0,w,h)=>{
+        for (let y=y0;y<y0+h;y++){
+          for (let x=x0;x<x0+w;x++){
+            map[y][x]=TILE.DECO;
+          }
+        }
+      };
+      decoRect(4,14,3,2);
+      decoRect(22,4,3,2);
+      decoRect(28,5,2,3);
+      decoRect(9,16,4,2);
+      decoRect(24,16,3,3);
+      decoRect(35-4,15,3,3);
+
+      return map;
+    }
+
+    function isSolid(tile){
+      return tile === TILE.WALL || tile === TILE.DECO || tile === TILE.LOCKED_DOOR;
+    }
+
+    function tileAt(map, tx, ty){
+      if (ty<0 || ty>=MAP_H || tx<0 || tx>=MAP_W) return TILE.WALL;
+      return map[ty][tx];
+    }
+
+    // =========================
+    // AABB colisão & movimento
+    // =========================
+    function aabbIntersects(a,b){
+      return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+    }
+
+    // Movimento com resolução por eixos
+    function moveAndCollide(entity, map, dx, dy){
+      // x
+      entity.x += dx;
+      resolveAxis(entity, map, 'x');
+      // y
+      entity.y += dy;
+      resolveAxis(entity, map, 'y');
+    }
+
+    function resolveAxis(entity, map, axis){
+      // Calcula tiles próximos
+      const left = Math.floor(entity.x / TILE_SIZE);
+      const right = Math.floor((entity.x + entity.w - 1) / TILE_SIZE);
+      const top = Math.floor(entity.y / TILE_SIZE);
+      const bottom = Math.floor((entity.y + entity.h - 1) / TILE_SIZE);
+
+      if (axis === 'x'){
+        // checa tiles sólidos e “empurra” para fora
+        for (let ty=top; ty<=bottom; ty++){
+          for (let tx=left; tx<=right; tx++){
+            const t = tileAt(map, tx, ty);
+            if (!isSolid(t)) continue;
+
+            const tileRect = {
+              x: tx*TILE_SIZE, y: ty*TILE_SIZE,
+              w: TILE_SIZE, h: TILE_SIZE
+            };
+
+            if (aabbIntersects(entity, tileRect)){
+              if (entity.vx > 0){
+                entity.x = tileRect.x - entity.w - 0.01;
+              } else if (entity.vx < 0){
+                entity.x = tileRect.x + tileRect.w + 0.01;
+              } else {
+                // fallback: empurrar pelo lado menor
+                const overlapL = entity.x + entity.w - tileRect.x;
+                const overlapR = tileRect.x + tileRect.w - entity.x;
+                if (overlapL < overlapR) entity.x = tileRect.x - entity.w - 0.01;
+                else entity.x = tileRect.x + tileRect.w + 0.01;
+              }
+            }
+          }
+        }
+      } else {
+        for (let ty=top; ty<=bottom; ty++){
+          for (let tx=left; tx<=right; tx++){
+            const t = tileAt(map, tx, ty);
+            if (!isSolid(t)) continue;
+
+            const tileRect = { x: tx*TILE_SIZE, y: ty*TILE_SIZE, w:TILE_SIZE, h:TILE_SIZE };
+            if (aabbIntersects(entity, tileRect)){
+              if (entity.vy > 0){
+                entity.y = tileRect.y - entity.h - 0.01;
+              } else if (entity.vy < 0){
+                entity.y = tileRect.y + tileRect.h + 0.01;
+              } else {
+                const overlapT = entity.y + entity.h - tileRect.y;
+                const overlapB = tileRect.y + tileRect.h - entity.y;
+                if (overlapT < overlapB) entity.y = tileRect.y - entity.h - 0.01;
+                else entity.y = tileRect.y + tileRect.h + 0.01;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // =========================
+    // Gameplay: loop e IA
+    // =========================
+    const gameplay = {
+      running:false,
+      map: null,
+      player: null,
+      enemies: [],
+      items: [],
+      panels: [],
+      doorUnlocked: false,
+
+      // trạng
+      pickup: {
+        disk: false,
+        report: false,
+        k7: false
+      },
+
+      lastAttackAt: 0,
+      attackCooldownMs: 420,
+      lanternOn: true,
+      battery: 100, // 0..100
+      hp: 100,
+      hpRatio: 1,
+      batteryRatio: 1,
+      timeAliveMs: 0
+    };
+
+    function resetGameState(){
+      gameplay.running = true;
+      gameplay.map = makeMap();
+      gameplay.enemies = [];
+      gameplay.items = [];
+      gameplay.panels = [];
+      gameplay.doorUnlocked = false;
+
+      gameplay.pickup = { disk:false, report:false, k7:false };
+
+      gameplay.player = {
+        x: 70, y: 80,
+        w: 14, h: 14,
+        speed: 92, // px/s
+        vx:0, vy:0,
+        facingX: 1, facingY: 0,
+        alive: true,
+        invulnMs: 0
+      };
+
+      // Itens de pista
+      const addItem = (tx,ty,type)=>{
+        gameplay.items.push({
+          x: tx*TILE_SIZE + 3,
+          y: ty*TILE_SIZE + 3,
+          w: 14, h: 14,
+          type, // 'disk'|'report'|'k7'
+          picked:false
+        });
+      };
+
+      addItem(6,6,'disk');      // disquete
+      addItem(18,6,'report');   // relatório
+      addItem(30,6,'k7');       // fita K7
+
+      // Inimigos “sombrados”
+      const addEnemy = (tx,ty)=>{
+        gameplay.enemies.push({
+          x: tx*TILE_SIZE + 4,
+          y: ty*TILE_SIZE + 4,
+          w: 12, h: 12,
+          hp: 2,
+          state: 'patrol', // patrol|chase|stunned|dead
+          stunMs: 0,
+          speed: 64,
+          vx:0, vy:0,
+          patrolDir: Math.random()<0.5 ? -1:1,
+          wanderTimer: 0,
+          attackCooldown: 700,
+          lastAttack: -999,
+        });
+      };
+
+      // Distribuição
+      addEnemy(10,9);
+      addEnemy(16,14);
+      addEnemy(28,4);
+      addEnemy(6,16);
+      addEnemy(26,18);
+      addEnemy(34,14);
+
+      gameplay.lanternOn = true;
+      gameplay.battery = 100;
+      gameplay.hp = 100;
+      gameplay.lastAttackAt = -9999;
+      gameplay.timeAliveMs = 0;
+
+      statusBadge.textContent = '🧭 Buscando pistas…';
+    }
+
+    function beginNewGame(){
+      initAudio();
+      startMusic();
+      resetGameState();
+      setState('Gameplay');
+    }
+
+    // Permite que “E” desbloqueie painel e a porta após puzzles.
+    function tryInteract(){
+      const p = gameplay.player;
+      const playerCenterX = p.x + p.w/2;
+      const playerCenterY = p.y + p.h/2;
+
+      // Procura tile PANEL perto
+      const tx0 = Math.floor(playerCenterX / TILE_SIZE);
+      const ty0 = Math.floor(playerCenterY / TILE_SIZE);
+
+      const scan = 2;
+      for (let dy=-scan; dy<=scan; dy++){
+        for (let dx=-scan; dx<=scan; dx++){
+          const tx = tx0+dx, ty = ty0+dy;
+          const t = tileAt(gameplay.map, tx, ty);
+          if (t !== TILE.PANEL) continue;
+
+          const tileCenterX = tx*TILE_SIZE + TILE_SIZE/2;
+          const tileCenterY = ty*TILE_SIZE + TILE_SIZE/2;
+          const dist = Math.hypot(tileCenterX-playerCenterX, tileCenterY-playerCenterY);
+
+          if (dist < 32){
+            // Hack: precisa das 3 pistas
+            const hasAll = gameplay.pickup.disk && gameplay.pickup.report && gameplay.pickup.k7;
+            if (!hasAll){
+              beep({freq: 220, dur: 0.12, type:'square', gain:0.08, slideTo:180, slideDur:0.12});
+              statusBadge.textContent = '🔌 Painel travado… falta uma pista.';
+            } else {
+              // Desbloqueia a porta (simula “hack” com delay/efeito sonoro)
+              statusBadge.textContent = '🧠 Hack em andamento…';
+              beep({freq: 440, dur:0.07, type:'square', gain:0.12});
+              noiseHit({dur:0.08, gain:0.10});
+              // Pequeno “tempo” antes de liberar
+              gameplay._unlockPending = true;
+              gameplay._unlockTimer = 550; // ms
+            }
+            return;
+          }
+        }
+      }
+    }
+
+    function applyDamageToPlayer(amount){
+      if (gameplay.player.invulnMs > 0) return;
+      gameplay.hp = clamp(gameplay.hp - amount, 0, 100);
+      gameplay.player.invulnMs = 600;
+      noiseHit({dur:0.12, gain:0.13});
+      beep({freq: 160, dur:0.10, type:'square', gain:0.10, slideTo:120, slideDur:0.10});
+    }
+
+    function tryAttack(){
+      const tNow = nowMs();
+      if (tNow - gameplay.lastAttackAt < gameplay.attackCooldownMs) return;
+      gameplay.lastAttackAt = tNow;
+
+      // Ferramentas mecânicas:
+      // Antes de coletar algumas pistas, o jogador tem só “lanterna-batida”.
+      // Após disquete: encontra chave inglesa pesada.
+      // Após relatório: maçarico improvisado (mais dano, mas não “queima”).
+      // Após K7: consegue combo mecânico + energia (maior dano).
+      const hasAny = gameplay.pickup.disk || gameplay.pickup.report || gameplay.pickup.k7;
+
+      let weapon = 'flash'; // 'flash'|'wrench'|'torch'|'arc'
+      let baseDmg = 1;
+
+      if (!hasAny){
+        weapon = 'flash';
+        baseDmg = 1;
+        beep({freq: 520, dur:0.06, type:'square', gain:0.10});
+      } else {
+        if (gameplay.pickup.disk) weapon = 'wrench';
+        if (gameplay.pickup.report) weapon = 'torch';
+        if (gameplay.pickup.disk && gameplay.pickup.report && gameplay.pickup.k7) weapon = 'arc';
+        baseDmg = (weapon==='flash') ? 1 : (weapon==='wrench' ? 2 : (weapon==='torch'?3:4));
+
+        // som da ferramenta
+        if (weapon==='wrench'){
+          beep({freq: 180, dur:0.08, type:'square', gain:0.10, slideTo:140, slideDur:0.08});
+          noiseHit({dur:0.08, gain:0.08});
+        } else if (weapon==='torch'){
+          beep({freq: 260, dur:0.07, type:'triangle', gain:0.10, slideTo:210, slideDur:0.07});
+          noiseHit({dur:0.10, gain:0.07});
+        } else {
+          beep({freq: 340, dur:0.07, type:'square', gain:0.12, slideTo:180, slideDur:0.07});
+          noiseHit({dur:0.12, gain:0.11});
+        }
+      }
+
+      const p = gameplay.player;
+      // Ataque em “cone curto” na direção do jogador
+      const dirX = p.facingX || 1;
+      const dirY = p.facingY || 0;
+
+      const atkRange = (weapon==='flash'? 26 : weapon==='wrench'? 30 : weapon==='torch'? 34 : 38);
+      const atkHalf = 0.9; // largura angular (aprox)
+
+      const pcx = p.x + p.w/2;
+      const pcy = p.y + p.h/2;
+
+      for (const en of gameplay.enemies){
+        if (en.state === 'dead') continue;
+
+        // Checa se está na frente (produto escalar)
+        const ecx = en.x + en.w/2;
+        const ecy = en.y + en.h/2;
+        const dx = ecx - pcx;
+        const dy = ecy - pcy;
+        const dist = Math.hypot(dx,dy);
+        if (dist > atkRange) continue;
+
+        const ndx = dx / (dist || 1);
+        const ndy = dy / (dist || 1);
+        const dot = ndx*dirX + ndy*dirY; // cos do ângulo
+
+        if (dot < atkHalf*0.65) continue; // ajusta “cone”
+        // causa dano
+        en.hp -= baseDmg;
+
+        // Se inimigo estava na sombra, luz pode “atrapalhar”
+        if (gameplay.lanternOn) en.stunMs = Math.max(en.stunMs, 360);
+
+        // feedback
+        beep({freq: 120 + baseDmg*70, dur:0.05, type:'square', gain:0.07});
+        noiseHit({dur:0.05, gain:0.05});
+
+        if (en.hp <= 0){
+          en.state = 'dead';
+          // recompensa: beeps + “poeira”
+          beep({freq: 260, dur:0.08, type:'triangle', gain:0.12, slideTo:150, slideDur:0.06});
+          en._deathFx = 10;
+        }
+      }
+    }
+
+    function pickupItems(){
+      const p = gameplay.player;
+      const pc = {x: p.x + p.w/2, y: p.y + p.h/2};
+
+      for (const it of gameplay.items){
+        if (it.picked) continue;
+        const ic = {x: it.x + it.w/2, y: it.y + it.h/2};
+        const dist = Math.hypot(ic.x-pc.x, ic.y-pc.y);
+        if (dist < 18){
+          it.picked = true;
+          beep({freq: 330, dur:0.07, type:'square', gain:0.10, slideTo:420, slideDur:0.06});
+          if (it.type==='disk'){
+            gameplay.pickup.disk = true;
+            statusBadge.textContent = '💾 Disquete encontrado! Trama eletrônica liberando…';
+          } else if (it.type==='report'){
+            gameplay.pickup.report = true;
+            statusBadge.textContent = '🧾 Relatório achado! Sequência de controle em mãos…';
+          } else {
+            gameplay.pickup.k7 = true;
+            statusBadge.textContent = '🎛️ Fita K7 coletada! Hora de fechar a fenda!';
+          }
+          noiseHit({dur:0.06, gain:0.06});
+        }
+      }
+    }
+
+    // “Iluminação”: lanterna é um círculo com máscara (simulação simples por blend)
+    function isEnemyVisibleByLantern(enemy){
+      if (!gameplay.lanternOn) return false;
+      if (gameplay.battery <= 0) return false;
+
+      const p = gameplay.player;
+      const pcx = p.x + p.w/2;
+      const pcy = p.y + p.h/2;
+      const ecx = enemy.x + enemy.w/2;
+      const ecy = enemy.y + enemy.h/2;
+
+      const dist = Math.hypot(ecx-pcx, ecy-pcy);
+
+      // Raio depende da bateria (piora com tempo)
+      const baseR = 130;
+      const r = baseR * (0.45 + 0.55*(gameplay.batteryRatio));
+      return dist <= r;
+    }
+
+    function updateEnemies(dt){
+      const p = gameplay.player;
+
+      for (const en of gameplay.enemies){
+        if (en.state === 'dead') continue;
+
+        // Stun por luz
+        const visible = isEnemyVisibleByLantern(en);
+
+        if (visible){
+          en.state = (en.state === 'stunned') ? 'stunned' : 'stunned';
+          en.stunMs = Math.max(en.stunMs, 160);
+        }
+
+        if (en.stunMs > 0){
+          en.stunMs -= dt*1000;
+          en.vx = 0; en.vy = 0;
+          // ainda pode ficar “tremendo”
+          continue;
+        }
+
+        // IA: patrulha + corre em direção se sentir proximidade
+        const pcx = p.x + p.w/2;
+        const pcy = p.y + p.h/2;
+        const ecx = en.x + en.w/2;
+        const ecy = en.y + en.h/2;
+
+        const dx = pcx - ecx;
+        const dy = pcy - ecy;
+        const dist = Math.hypot(dx,dy);
+
+        // “Sombras” respondem pior quando estão longe; quando perto ficam mais agressivas.
+        const chaseRange = 240;
+        const attackRange = 22;
+
+        let vx=0, vy=0;
+
+        if (dist < chaseRange){
+          en.state = 'chase';
+          const inv = 1/(dist||1);
+          vx = dx*inv;
+          vy = dy*inv;
+          // acelera um pouco se estiver mais escuro (lanterna fraca)
+          const mood = 1 + (1 - gameplay.batteryRatio)*0.55;
+          en.speed = lerp(58, 86, mood);
+        } else {
+          en.state = 'patrol';
+          // patrulha: move para um lado e muda direção
+          en.wanderTimer -= dt*1000;
+          if (en.wanderTimer <= 0){
+            en.wanderTimer = 650 + Math.random()*650;
+            en.patrolDir = Math.random()<0.5 ? -1 : 1;
+          }
+          // tenta andar horizontalmente e “desliza” um pouco vertical
+          vx = en.patrolDir;
+          vy = Math.sin((gameplay.timeAliveMs/600) + en.x*0.01) * 0.35;
+          en.speed = 62;
+          // normaliza
+          const len = Math.hypot(vx,vy);
+          vx/= (len||1); vy/=(len||1);
+        }
+
+        // Ataque corpo-a-corpo se perto e cooldown
+        const tNow = nowMs();
+        const canAttack = tNow - en.lastAttack > en.attackCooldown;
+
+        // Move com colisões
+        en.vx = vx * en.speed;
+        en.vy = vy * en.speed;
+
+        // Se está perto o suficiente, aplica dano
+        if (dist < attackRange && canAttack){
+          en.lastAttack = tNow;
+          // Se o jogador estiver com lanterna ligada, a sombra toma vantagem menor.
+          const lightFactor = gameplay.lanternOn ? (0.6 + 0.4*gameplay.batteryRatio) : 1.15;
+          const dmg = gameplay.lanternOn ? 10*lightFactor*0.55 : 12;
+          applyDamageToPlayer(dmg);
+          statusBadge.textContent = '⚠️ A sombra te atacou!';
+          beep({freq: 140, dur:0.07, type:'square', gain:0.09, slideTo:110, slideDur:0.07});
+          noiseHit({dur:0.08, gain:0.10});
+          // pequena “pausa” de reação
+          en.stunMs = Math.max(en.stunMs, visible ? 260 : 90);
+        }
+
+        // movimento
+        const dxp = en.vx * dt;
+        const dyp = en.vy * dt;
+
+        moveAndCollide(en, gameplay.map, dxp, dyp);
+
+        // Evita ficar grudado no mesmo lugar: se não moveu muito, troca patrulha
+        if (Math.abs(dxp) + Math.abs(dyp) > 0.001){
+          // detecta “travamento” grosseiro
+        }
+      }
+    }
+
+    function updatePlayer(dt){
+      const p = gameplay.player;
+
+      if (!p.alive) return;
+
+      // invulnerabilidade
+      if (p.invulnMs > 0) p.invulnMs -= dt*1000;
+
+      updateAxis();
+
+      // Lanterna
+      // L alterna; também não permite ligar se bateria == 0
+      if (input.justPressed.has('l')){
+        if (gameplay.battery > 0.5) {
+          gameplay.lanternOn = !gameplay.lanternOn;
+          beep({freq: gameplay.lanternOn?420:250, dur:0.08, type:'square', gain:0.09});
+          statusBadge.textContent = gameplay.lanternOn ? '💡 Lanterna ligada.' : '🌫️ Lanterna desligada.';
+        } else {
+          beep({freq: 160, dur:0.10, type:'square', gain:0.08, slideTo:90, slideDur:0.10});
+          statusBadge.textContent = '🔋 Bateria zerada…';
+          gameplay.lanternOn = false;
+        }
+      }
+
+      // Atacar
+      if (input.justPressed.has(' ') || input.justPressed.has('space')){
+        tryAttack();
+      } else if (input.justPressed.has('space')) {
+        tryAttack();
+      }
+
+      // Interagir
+      if (input.justPressed.has('e')){
+        tryInteract();
+      }
+
+      // Movimento
+      const ax = input.axisX;
+      const ay = input.axisY;
+
+      if (ax !== 0 || ay !== 0){
+        p.facingX = ax;
+        p.facingY = ay;
+      }
+
+      const speed = p.speed;
+      p.vx = ax * speed;
+      p.vy = ay * speed;
+
+      const dx = p.vx * dt;
+      const dy = p.vy * dt;
+
+      moveAndCollide(p, gameplay.map, dx, dy);
+
+      // Bateria gasta
+      if (gameplay.lanternOn && gameplay.battery > 0){
+        gameplay.battery -= (14.5 * dt); // ~ gastar
+      } else {
+        // recarga lenta se desligada (pra manter suspense, mas com limite)
+        gameplay.battery += (7.5 * dt);
+      }
+      gameplay.battery = clamp(gameplay.battery, 0, 100);
+
+      if (gameplay.battery <= 0.01 && gameplay.lanternOn){
+        gameplay.lanternOn = false;
+        beep({freq: 130, dur:0.10, type:'square', gain:0.08, slideTo:90, slideDur:0.10});
+        statusBadge.textContent = '🔋 Bateria acabou…';
+      }
+
+      // Pegada de itens
+      pickupItems();
+
+      // Unlock do painel (pending)
+      if (gameplay._unlockPending){
+        gameplay._unlockTimer -= dt*1000;
+        if (gameplay._unlockTimer <= 0){
+          gameplay._unlockPending = false;
+          gameplay.doorUnlocked = true;
+          // Remove a porta trancada no mapa: troca tile
+          for (let y=0;y<MAP_H;y++){
+            for (let x=0;x<MAP_W;x++){
+              if (gameplay.map[y][x] === TILE.LOCKED_DOOR){
+                gameplay.map[y][x] = TILE.FLOOR;
+              }
+            }
+          }
+          beep({freq: 520, dur:0.10, type:'triangle', gain:0.12, slideTo:680, slideDur:0.08});
+          noiseHit({dur:0.10, gain:0.08});
+          statusBadge.textContent = '🚪 Porta do Controle liberada!';
+        }
+      }
+
+      // Vitória: alcançar a “zona” da porta (tile original aproximado)
+      const doorZone = { x: 31*TILE_SIZE - 6, y: 20*TILE_SIZE - 6, w: 40, h: 40 };
+      const playerRect = { x:p.x, y:p.y, w:p.w, h:p.h };
+      if (gameplay.doorUnlocked && aabbIntersects(playerRect, doorZone)){
+        setState('Victory');
+      }
+
+      // Game Over
+      if (gameplay.hp <= 0){
+        gameplay.player.alive = false;
+        stopMusic();
+        document.getElementById('gameOverText').textContent =
+          'A fábrica te engoliu pela escuridão. Tenta de novo, técnico…';
+        setState('GameOver');
+      }
+    }
+
+    // =========================
+    // Render
+    // =========================
+    function drawPixelBg(){
+      // Fundo “néon nebuloso” (simulação)
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // Grid leve
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      ctx.strokeStyle = 'rgba(60,242,255,0.7)';
+      for (let x=0;x<canvas.width;x+=TILE_SIZE){
+        ctx.beginPath();
+        ctx.moveTo(x,0);
+        ctx.lineTo(x,canvas.height);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawMap(){
+      for (let y=0;y<MAP_H;y++){
+        for (let x=0;x<MAP_W;x++){
+          const t = gameplay.map[y][x];
+          const px = x*TILE_SIZE, py = y*TILE_SIZE;
+
+          if (t === TILE.WALL){
+            // parede com borda neon
+            ctx.fillStyle = 'rgba(6,6,16,1)';
+            ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+
+            ctx.strokeStyle = 'rgba(60,242,255,0.22)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px+1,py+1,TILE_SIZE-2,TILE_SIZE-2);
+          } else if (t === TILE.FLOOR){
+            // piso escuro com “brilho” pontual
+            ctx.fillStyle = 'rgba(2,2,10,1)';
+            ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+
+            // variação “pixel art”:
+            if ((x+y)%11 === 0){
+              ctx.fillStyle = 'rgba(60,242,255,0.06)';
+              ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+            }
+          } else if (t === TILE.LOCKED_DOOR){
+            // porta travada com glifo
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+
+            ctx.fillStyle = 'rgba(255,61,242,0.10)';
+            ctx.fillRect(px+2,py+2,TILE_SIZE-4,TILE_SIZE-4);
+
+            // “ranhura” central
+            ctx.strokeStyle = 'rgba(255,61,242,0.7)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(px+TILE_SIZE/2, py+4);
+            ctx.lineTo(px+TILE_SIZE/2, py+TILE_SIZE-4);
+            ctx.stroke();
+
+            // etiqueta
+            ctx.fillStyle = 'rgba(217,247,255,0.55)';
+            ctx.fillRect(px+3, py+3, TILE_SIZE-6, 3);
+          } else if (t === TILE.PANEL){
+            // painel hackeável
+            ctx.fillStyle = 'rgba(2,2,10,1)';
+            ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+
+            ctx.strokeStyle = 'rgba(60,242,255,0.35)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px+3,py+3,TILE_SIZE-6,TILE_SIZE-6);
+
+            // LEDs
+            const pulse = 0.5 + 0.5*Math.sin((gameplay.timeAliveMs/120)+x*0.3+y*0.2);
+            ctx.fillStyle = `rgba(60,242,255,${0.25 + pulse*0.35})`;
+            ctx.fillRect(px+7,py+7, 3, 3);
+            ctx.fillStyle = `rgba(255,61,242,${0.15 + pulse*0.25})`;
+            ctx.fillRect(px+12,py+7, 3, 3);
+            ctx.fillStyle = `rgba(60,242,255,${0.18 + pulse*0.25})`;
+            ctx.fillRect(px+9,py+12, 3, 3);
+          } else if (t === TILE.DECO){
+            // caixas/obstáculos
+            ctx.fillStyle = 'rgba(10,10,30,1)';
+            ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+            ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+            ctx.strokeRect(px+2,py+2,TILE_SIZE-4,TILE_SIZE-4);
+
+            // fita neon
+            ctx.fillStyle = 'rgba(60,242,255,0.12)';
+            if ((x+y)%2===0){
+              ctx.fillRect(px+3,py+2,TILE_SIZE-6,3);
+            } else {
+              ctx.fillRect(px+2,py+3,3,TILE_SIZE-6);
+            }
+          }
+        }
+      }
+    }
+
+    function drawEntities(){
+      // Itens
+      for (const it of gameplay.items){
+        if (it.picked) continue;
+        const cx = it.x, cy = it.y;
+
+        // “ícone” por tipo
+        if (it.type==='disk'){
+          // disquete
+          ctx.fillStyle = 'rgba(60,242,255,0.16)';
+          ctx.fillRect(cx,cy,it.w,it.h);
+          ctx.fillStyle = 'rgba(60,242,255,0.55)';
+          ctx.fillRect(cx+3,cy+3, it.w-6, 4);
+          ctx.fillStyle = 'rgba(217,247,255,0.55)';
+          ctx.fillRect(cx+it.w-6, cy+7, 3, 3);
+        } else if (it.type==='report'){
+          ctx.fillStyle = 'rgba(255,61,242,0.12)';
+          ctx.fillRect(cx,cy,it.w,it.h);
+          ctx.fillStyle = 'rgba(255,61,242,0.60)';
+          ctx.fillRect(cx+2,cy+2, it.w-4, 3);
+          ctx.strokeStyle = 'rgba(217,247,255,0.22)';
+          ctx.beginPath();
+          ctx.moveTo(cx+4, cy+7);
+          ctx.lineTo(cx+it.w-4, cy+7);
+          ctx.stroke();
+        } else if (it.type==='k7'){
+          // fita K7
+          ctx.fillStyle = 'rgba(88,255,140,0.10)';
+          ctx.fillRect(cx,cy,it.w,it.h);
+          ctx.strokeStyle = 'rgba(88,255,140,0.55)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(cx+3,cy+3,it.w-6,it.h-6);
+          ctx.fillStyle = 'rgba(88,255,140,0.55)';
+          ctx.fillRect(cx+5,cy+7, 3, 3);
+          ctx.fillRect(cx+it.w-8,cy+7, 3, 3);
+        }
+
+        // outline
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.strokeRect(cx+0.5,cy+0.5,it.w-1,it.h-1);
+      }
+
+      // Inimigos
+      for (const en of gameplay.enemies){
+        if (en.state === 'dead') continue;
+
+        const base = isEnemyVisibleByLantern(en) ? 'rgba(60,242,255,0.75)' : 'rgba(0,0,0,0.5)';
+        const glow = isEnemyVisibleByLantern(en) ? 0.65 : 0.20;
+
+        // “criatura de sombra” como blob pixel
+        ctx.fillStyle = `rgba(0,0,0,0.6)`;
+        ctx.fillRect(en.x, en.y, en.w, en.h);
+
+        ctx.fillStyle = `rgba(60,242,255,${glow*0.75})`;
+        ctx.fillRect(en.x+1, en.y+1, en.w-2, en.h-2);
+
+        ctx.strokeStyle = `rgba(255,61,242,${0.18 + glow*0.25})`;
+        ctx.strokeRect(en.x+0.5, en.y+0.5, en.w-1, en.h-1);
+
+        // Olhos “glitch”
+        const eyesOn = isEnemyVisibleByLantern(en) ? 1 : 0.35;
+        ctx.fillStyle = `rgba(217,247,255,${0.55*eyesOn})`;
+        ctx.fillRect(en.x+3, en.y+4, 2, 2);
+        ctx.fillRect(en.x+en.w-5, en.y+4, 2, 2);
+
+        if (en.stunMs > 0){
+          // indicador de atordoamento
+          const alpha = clamp(en.stunMs/360, 0,1);
+          ctx.strokeStyle = `rgba(255,61,242,${0.15 + alpha*0.45})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(en.x+en.w/2, en.y+en.h/2, 10, 0, Math.PI*2);
+          ctx.stroke();
+        }
+      }
+
+      // Jogador
+      const p = gameplay.player;
+      const pcx = p.x + p.w/2, pcy = p.y + p.h/2;
+
+      // sprite simplificado
+      ctx.fillStyle = gameplay.lanternOn ? 'rgba(60,242,255,0.35)' : 'rgba(255,61,242,0.12)';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+
+      ctx.strokeStyle = 'rgba(217,247,255,0.25)';
+      ctx.strokeRect(p.x+0.5, p.y+0.5, p.w-1, p.h-1);
+
+      // “lanterna”
+      const dirLen = 16;
+      const dx = p.facingX * dirLen;
+      const dy = p.facingY * dirLen;
+      ctx.strokeStyle = gameplay.lanternOn ? 'rgba(60,242,255,0.75)' : 'rgba(255,61,242,0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pcx, pcy);
+      ctx.lineTo(pcx + dx, pcy + dy);
+      ctx.stroke();
+
+      // vida baixa: piscando
+      if (gameplay.hp < 35 && (Math.floor(gameplay.timeAliveMs/120)%2===0)){
+        ctx.fillStyle = 'rgba(255,77,109,0.35)';
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+      }
+
+      // retícula (radar básico)
+      if (gameplay.lanternOn){
+        ctx.strokeStyle = 'rgba(60,242,255,0.10)';
+        ctx.beginPath();
+        ctx.arc(pcx,pcy, 46, 0, Math.PI*2);
+        ctx.stroke();
+      }
+    }
+
+    function applyLanternMask(){
+      // Desenha um “escurecimento” global e abre um círculo claro ao redor do jogador.
+      if (!gameplay.lanternOn || gameplay.battery <= 0){
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        return;
+      }
+
+      // Base: escurece
+      ctx.fillStyle = 'rgba(0,0,0,0.60)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // Raio com base na bateria
+      const p = gameplay.player;
+      const pcx = p.x + p.w/2;
+      const pcy = p.y + p.h/2;
+      const baseR = 135;
+      const r = baseR * (0.50 + 0.50*gameplay.batteryRatio);
+
+      // “Boca de luz” com composição: desenhar círculo claro e usar globalCompositeOperation.
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(pcx,pcy, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+
+      // Adiciona brilho suave por fora
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const grad = ctx.createRadialGradient(pcx,pcy, 0, pcx,pcy, r);
+      grad.addColorStop(0, 'rgba(60,242,255,0.35)');
+      grad.addColorStop(0.45, 'rgba(60,242,255,0.14)');
+      grad.addColorStop(1, 'rgba(60,242,255,0.0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(pcx,pcy,r,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+
+      // Efeito de “barulho” leve
+      ctx.save();
+      ctx.globalAlpha = 0.05;
+      for (let i=0;i<140;i++){
+        const x = Math.random()*canvas.width;
+        const y = Math.random()*canvas.height;
+        ctx.fillStyle = (Math.random()<0.5) ? 'rgba(255,61,242,0.8)' : 'rgba(60,242,255,0.8)';
+        ctx.fillRect(x,y,1,1);
+      }
+      ctx.restore();
+    }
+
+    function render(){
+      drawPixelBg();
+      drawMap();
+
+      // Objetos atrás do “mask” não ficam visíveis onde a lanterna não alcança.
+      // Vamos desenhar entidades, depois aplicar máscara.
+      drawEntities();
+
+      // Mask de iluminação
+      applyLanternMask();
+
+      // UI pequena in-canvas
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(10, 10, 290, 38);
+
+      ctx.strokeStyle = 'rgba(60,242,255,0.22)';
+      ctx.strokeRect(10.5, 10.5, 290-1, 38-1);
+
+      ctx.fillStyle = 'rgba(217,247,255,0.95)';
+      ctx.font = '10px "Press Start 2P", monospace';
+      const p = gameplay.player;
+
+      const hasAll = gameplay.pickup.disk && gameplay.pickup.report && gameplay.pickup.k7;
+      const toolTxt = !hasAll
+        ? (gameplay.pickup.disk ? (gameplay.pickup.report ? 'Maçarico improv.' : 'Chave inglesa pesada') : 'Lanterna (batida)') 
+        : 'Combo: Energia + Ferramenta';
+
+      ctx.fillText(`Ferramenta: ${toolTxt}`, 20, 28);
+
+      // dica
+      ctx.fillStyle = 'rgba(122,169,182,0.95)';
+      const nearPanel = isNearPanel(p);
+      const interTxt = nearPanel ? 'E: Hackar painel' : 'E: Interagir';
+      ctx.fillText(interTxt + '  •  L: Lanterna', 20, 46);
+
+      ctx.restore();
+
+      // Atualiza bars
+      gameplay.hpRatio = gameplay.hp/100;
+      gameplay.batteryRatio = gameplay.battery/100;
+      hpFill.style.width = `${clamp(gameplay.hpRatio*100,0,100)}%`;
+      batFill.style.width = `${clamp(gameplay.batteryRatio*100,0,100)}%`;
+
+      hpFill.parentElement.classList.toggle('red', gameplay.hpRatio < 0.33);
+      batFill.parentElement.classList.toggle('orange', gameplay.batteryRatio < 0.45);
+    }
+
+    function isNearPanel(p){
+      const pcx = p.x + p.w/2;
+      const pcy = p.y + p.h/2;
+      const tx0 = Math.floor(pcx / TILE_SIZE);
+      const ty0 = Math.floor(pcy / TILE_SIZE);
+      for (let dy=-2; dy<=2; dy++){
+        for (let dx=-2; dx<=2; dx++){
+          const t = tileAt(gameplay.map, tx0+dx, ty0+dy);
+          if (t !== TILE.PANEL) continue;
+          const cx = (tx0+dx)*TILE_SIZE + TILE_SIZE/2;
+          const cy = (ty0+dy)*TILE_SIZE + TILE_SIZE/2;
+          if (Math.hypot(cx-pcx, cy-pcy) < 32) return true;
+        }
+      }
+      return false;
+    }
+
+    // =========================
+    // Loop principal
+    // =========================
+    let lastT = nowMs();
+
+    function frame(){
+      const t = nowMs();
+      const dt = clamp((t - lastT)/1000, 0, 0.033); // cap para estabilidade
+      lastT = t;
+
+      // Música procedural
+      tickMusic(dt);
+
+      if (state.name === 'Gameplay'){
+        gameplay.timeAliveMs += dt*1000;
+        updatePlayer(dt);
+        updateEnemies(dt);
+
+        // Status dinâmico
+        const collected = Object.values(gameplay.pickup).filter(Boolean).length;
+        const hasAll = collected === 3;
+        if (!hasAll){
+          statusBadge.textContent = `🧭 Buscando pistas… (${collected}/3)`;
+        } else {
+          if (!gameplay.doorUnlocked){
+            statusBadge.textContent = '🚪 Coletado! Hackue o painel para liberar a porta.';
+          } else {
+            statusBadge.textContent = '🏁 Porta liberada! Chegue na zona do Controle.';
+          }
+        }
+
+        // Se acabou bateria, muda badge
+        if (gameplay.batteryRatio < 0.2){
+          statusBadge.textContent = '🔋 Bateria crítica! Luz falhando…';
+        }
+
+        render();
+      } else {
+        // Quando não está no gameplay, desenha background estático
+        // e para música.
+        if (state.name !== 'Lore' && state.name !== 'Menu') stopMusic();
+        drawPixelBg();
+        drawMap();
+        // sem entidades pra não confundir
+        // mostra um “flash” sutil de título
+        ctx.save();
+        ctx.fillStyle = 'rgba(60,242,255,0.12)';
+        ctx.font = '18px "Press Start 2P", monospace';
+        ctx.fillText('FENDAS 86', 20, 60);
+        ctx.fillStyle = 'rgba(255,61,242,0.12)';
+        ctx.fillText('1986 • NEON • SUSPENSE', 20, 82);
+        ctx.restore();
+      }
+
+      consumeJustPressed();
+      requestAnimationFrame(frame);
+    }
+
+    // =========================
+    // Boot
+    // =========================
+    function boot(){
+      // Ajusta canvas para reflow? Mantemos 800x520 e usamos CSS para responsivo.
+      setState('Menu');
+      stopMusic();
+      // Ajusta texto lore ao abrir
+      const txt = screenLore.querySelector('.text');
+      txt.textContent =
+`1986. A cidade do interior fede a óleo e ferrugem.
+Você trabalha com automação industrial e estuda eletrônica.
+
+Quando seus colegas somem, você encontra marcas de
+“energia” e gases desconhecidos — e aprende o que veio da fenda.`;
+
+      document.querySelector('#screenLore h1').textContent = '📜 INSTRUÇÕES & LORE';
+
+      requestAnimationFrame(frame);
+    }
+
+    boot();
+
+    // =========================
+    // Pequenas correções de teclado (espaço)
+    // =========================
+    // Alguns navegadores retornam " " como tecla ou "Spacebar" (mais antigo). Lidamos cedo:
+    window.addEventListener('keydown', (e)=>{
+      if (e.key === ' ') {
+        input.justPressed.add(' ');
+      }
+    });
+  </script>
+</body>
+</html>
